@@ -3,7 +3,12 @@ from streamlit_mic_recorder import mic_recorder, speech_to_text
 import pandas as pd
 import altair as alt
 from sentiment_analysis import analyze_sentiment
-import speech_recognition as sr
+from conversation_diarization import ConversationDiarization
+from tempfile import NamedTemporaryFile
+import os
+import ntpath
+from pathlib import Path, PureWindowsPath
+
 
 st.set_page_config(layout='wide')
 state = st.session_state
@@ -40,18 +45,27 @@ lang_options = {
     "English (UK)": "en-GB",
     "Japanese": "ja-JP"
 }
-selected_lang = st.sidebar.selectbox("Select the language of the audio", list(lang_options))
+selected_lang = st.sidebar.selectbox(
+    "Select the language of the audio", list(lang_options))
 
 cols_1 = st.columns(2)
 
-audio = st.sidebar.file_uploader("Upload an audio file", type=["mp3", "wav"], on_change=None)
+audio = st.sidebar.file_uploader("Upload an audio file", type=[
+                                 "mp3", "wav"], on_change=None)
 
 if audio is not None and audio.name not in state.uploaded_files:
-    file_name = audio.name
-    state.uploaded_files.add(file_name)
-    state.audio_mapping[file_name] = audio
 
-file_selected = st.sidebar.selectbox("Which Audio File you want to process?", state.uploaded_files)
+    with NamedTemporaryFile(suffix=".wav", delete=False) as temp:
+        temp.write(audio.read())
+        # tfName = temp.name
+        temp.seek(0)
+
+    file_name = temp.name
+    state.uploaded_files.add(file_name)
+    state.audio_mapping[file_name] = temp
+
+file_selected = st.sidebar.selectbox(
+    "Which Audio File you want to process?", state.uploaded_files)
 if file_selected:
     st.sidebar.write(f"Selected File: {file_selected}")
     audio_file = state.audio_mapping.get(file_selected)
@@ -64,12 +78,14 @@ if file_selected:
 phrase_info = "Enter a phrase related to the audio or your analysis."
 phrase_input = st.sidebar.text_input(
     "Phrase",
-    placeholder = "Enter phrase",
-    help = phrase_info
+    placeholder="Enter phrase",
+    help=phrase_info
 )
 
-is_audio = st.sidebar.checkbox('Perform Audio Analysis', key='is_audio', on_change=None)
-perform_sentiment_analysis = st.sidebar.checkbox('Perform Sentiment Analysis', key='perform_sentiment_analysis', on_change=None)
+perform_audio_diarization = st.sidebar.checkbox(
+    'Perform Audio Diarization', key='perform_audio_diarization', on_change=None)
+perform_sentiment_analysis = st.sidebar.checkbox(
+    'Perform Sentiment Analysis', key='perform_sentiment_analysis', on_change=None)
 
 if perform_sentiment_analysis:
     st.markdown("Sentiment Analysis")
@@ -109,7 +125,7 @@ if perform_sentiment_analysis:
             chart = alt.Chart(sentiment_data).mark_bar().encode(
                 x="Sentiment:O",
                 y="Score:Q",
-                color = alt.Color("Color:N", scale=None),
+                color=alt.Color("Color:N", scale=None),
                 tooltip=["Sentiment:N", "Score:Q"]
             ).properties(
                 title="Sentiment Analysis Scores"
@@ -119,23 +135,57 @@ if perform_sentiment_analysis:
         else:
             st.error("Error: No audio file found")
 
+elif perform_audio_diarization:
+    st.markdown("Audio Diarization")
+    st.write("\t\tSpeaker 1:")
+    if file_selected:
+        audio_file = state.audio_mapping.get(file_selected)
+        if audio_file:
+            progress_bar = st.sidebar.empty()
+            progres_text = st.sidebar.empty()
+
+            progress_bar.progress(0)
+            progres_text.text("Processing.....")
+
+            # temp_file = audio_file.name.replace(os.sep, ntpath.sep)
+            windows_path = Path(audio_file.name).as_posix()
+            windows_path.replace("/", "\\")
+
+            # TODO: phrase list
+            diarize = ConversationDiarization(
+                audio_file=windows_path, language=lang_options[selected_lang])
+            
+            text = diarize.recognize_from_file()
+            st.markdown(text)
+            print('Diarize text: ', text)
+
+            progress_bar.progress(100)
+            progres_text.text("Processing Complete.....")
+
+        else:
+            st.error("Error: No audio file found")
+
 
 else:
     if state.uploaded_files:
+        print("xxxxxxxxxxxxxxxxxxxxx")
         if prompt := st.chat_input("What is up?"):
             state.messages.append({"role": "user", "content": prompt})
         # Display user message in chat message container
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-
             with st.chat_message("assistant"):
                 if is_audio and file_selected:
-                    response = st.write_stream(get_response(file_selected, prompt, state.mapping, True))
-                    state.messages.append({"role": "assistant", "content": response})
+                    response = st.write_stream(get_response(
+                        file_selected, prompt, state.mapping, True))
+                    state.messages.append(
+                        {"role": "assistant", "content": response})
                 else:
-                    response = st.write_stream(get_response(file_selected, prompt, state.mapping, False))
-                    state.messages.append({"role": "assistant", "content": response})
+                    response = st.write_stream(get_response(
+                        file_selected, prompt, state.mapping, False))
+                    state.messages.append(
+                        {"role": "assistant", "content": response})
 
                 st.download_button('Download Text', response)
     else:
