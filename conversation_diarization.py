@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 diarize_text = ""
 last_speaker_id = None
 
+
 class ConversationDiarization:
     """
     Generate conversation diarization result.
@@ -26,17 +27,23 @@ class ConversationDiarization:
 
     def conversation_transcriber_transcribed_cb(self, evt: speechsdk.SpeechRecognitionEventArgs):
         global diarize_text
-        
+
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
             if evt.result.speaker_id and evt.result.speaker_id != "Unknown":
+                # calculate start end time, convert into second.
+                start_time = evt.result._offset/10000000
+                end_time = (evt.result._offset + evt.result.duration)/10000000
                 self.segments.append({
                     'speaker_id': evt.result.speaker_id,
-                    'text': evt.result.text
+                    'text': evt.result.text,
+                    'start_time': start_time,
+                    'end_time': end_time
                 })
             print('\tText={}'.format(evt.result.text))
             print('\tSpeaker ID={}'.format(evt.result.speaker_id))
         elif evt.result.reason == speechsdk.ResultReason.NoMatch:
-            print('\tNOMATCH: Speech could not be TRANSCRIBED: {}'.format(evt.result.no_match_details))
+            print('\tNOMATCH: Speech could not be TRANSCRIBED: {}'.format(
+                evt.result.no_match_details))
 
     def conversation_transcriber_session_started_cb(self, evt: speechsdk.SessionEventArgs):
         print('SessionStarted event')
@@ -99,15 +106,14 @@ class ConversationDiarization:
             for segment in self.segments:
                 if last_speaker_id is None:
                     # For the first segment, start with "Guest-X:"
-                    diarize_text += f"{segment['speaker_id']}: {segment['text']}"
+                    diarize_text += f"{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']} ): {segment['text']}"
                 elif segment['speaker_id'] == last_speaker_id:
                     # If the current speaker is the same as the last one, append the text
                     diarize_text += " " + segment['text']
                 else:
                     # If the speaker changes, add a new entry with "Guest-X:"
-                    diarize_text += f"\n{segment['speaker_id']}: {segment['text']}"
-                
-                last_speaker_id = segment['speaker_id']
-            
-            return diarize_text
+                    diarize_text += f"\n{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']} ): {segment['text']}"
 
+                last_speaker_id = segment['speaker_id']
+
+            return diarize_text
