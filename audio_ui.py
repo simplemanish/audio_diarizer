@@ -132,7 +132,6 @@ if perform_sentiment_analysis:
 
 elif perform_audio_diarization:
     st.markdown("Audio Diarization")
-    st.write("\t\tSpeaker 1:")
     if file_selected:
         audio_file = state.audio_mapping.get(file_selected)
         if audio_file:

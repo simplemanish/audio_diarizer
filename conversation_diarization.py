@@ -4,7 +4,7 @@ import azure.cognitiveservices.speech as speechsdk
 from dotenv import load_dotenv
 
 diarize_text = ""
-
+last_speaker_id = None
 
 class ConversationDiarization:
     """
@@ -15,6 +15,7 @@ class ConversationDiarization:
         self.audio_file = audio_file
         self.language = language
         self.phrase_list = phrase_list
+        self.segments = []
 
     def conversation_transcriber_recognition_canceled_cb(self, evt: speechsdk.SessionEventArgs):
         print('Canceled event {}'.format(evt))
@@ -25,17 +26,23 @@ class ConversationDiarization:
 
     def conversation_transcriber_transcribed_cb(self, evt: speechsdk.SpeechRecognitionEventArgs):
         global diarize_text
+        
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            diarize_text += evt.result.speaker_id + ": " + evt.result.text + \
-                "\t\n"
+            if evt.result.speaker_id and evt.result.speaker_id != "Unknown":
+                self.segments.append({
+                    'speaker_id': evt.result.speaker_id,
+                    'text': evt.result.text
+                })
             print('\tText={}'.format(evt.result.text))
             print('\tSpeaker ID={}'.format(evt.result.speaker_id))
         elif evt.result.reason == speechsdk.ResultReason.NoMatch:
-            print('\tNOMATCH: Speech could not be TRANSCRIBED: {}'.format(
-                evt.result.no_match_details))
+            print('\tNOMATCH: Speech could not be TRANSCRIBED: {}'.format(evt.result.no_match_details))
 
     def conversation_transcriber_session_started_cb(self, evt: speechsdk.SessionEventArgs):
         print('SessionStarted event')
+        global diarize_text
+        diarize_text = ""
+        self.segments = []
 
     def recognize_from_file(self):
         load_dotenv()
@@ -86,16 +93,21 @@ class ConversationDiarization:
         conversation_transcriber.stop_transcribing_async()
 
         if transcribing_stop:
+            diarize_text = ""
+            last_speaker_id = None
+
+            for segment in self.segments:
+                if last_speaker_id is None:
+                    # For the first segment, start with "Guest-X:"
+                    diarize_text += f"{segment['speaker_id']}: {segment['text']}"
+                elif segment['speaker_id'] == last_speaker_id:
+                    # If the current speaker is the same as the last one, append the text
+                    diarize_text += " " + segment['text']
+                else:
+                    # If the speaker changes, add a new entry with "Guest-X:"
+                    diarize_text += f"\n{segment['speaker_id']}: {segment['text']}"
+                
+                last_speaker_id = segment['speaker_id']
+            
             return diarize_text
 
-
-# Main
-# if __name__ == "__main__":
-#     main()
-
-# try:
-#     diarize = ConversationDiarization(
-#         audio_file="C:/Users/047929/AppData/Local/Temp/tmplv2neogb.wav", language="en-US")
-#     diarize.recognize_from_file()
-# except Exception as err:
-#     print("Encountered exception. {}".format(err))
