@@ -70,7 +70,7 @@ if file_selected:
         except Exception as e:
             st.sidebar.error(f"Error playing audio: {e}")
 
-phrase_info = "Enter a phrase related to the audio or your analysis."
+phrase_info = "Enter a phrase related to the audio or your analysis. seperated by semicolon (;)"
 phrase_input = st.sidebar.text_input(
     "Phrase",
     placeholder="Enter phrase",
@@ -139,17 +139,18 @@ elif perform_audio_diarization:
             with NamedTemporaryFile(suffix=".wav", delete=False) as temp:
                 temp.write(audio_file.getvalue())
                 temp.seek(0)
-                temp.flush()
-                state.temp_file_location[audio.name] = temp.name
+                # temp.flush()
+                state.temp_file_location[audio_file.name] = temp.name
 
                 progress_bar = st.sidebar.empty()
                 progres_text = st.sidebar.empty()
                 progress_bar.progress(0)
                 progres_text.text("Processing.....")
 
-                # TODO: phrase list
+                # phrase list
+                phrase_list = phrase_input.split(";")
                 diarize = ConversationDiarization(
-                    audio_file=state.temp_file_location.get(audio_file.name), language=lang_options[selected_lang])
+                    audio_file=state.temp_file_location.get(audio_file.name), language=lang_options[selected_lang], phrase_list=phrase_list)
                 text = diarize.recognize_from_file()
                 st.text(text)
                 print('Diarize text: ', text)
