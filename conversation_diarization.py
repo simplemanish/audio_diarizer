@@ -26,8 +26,8 @@ class ConversationDiarization:
     def conversation_transcriber_transcribed_cb(self, evt: speechsdk.SpeechRecognitionEventArgs):
         global diarize_text
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            diarize_text += evt.result.text + \
-                "\t\n speaker ("+evt.result.speaker_id+")"
+            diarize_text += evt.result.speaker_id + ": " + evt.result.text + \
+                "\t\n"
             print('\tText={}'.format(evt.result.text))
             print('\tSpeaker ID={}'.format(evt.result.speaker_id))
         elif evt.result.reason == speechsdk.ResultReason.NoMatch:
@@ -85,7 +85,7 @@ class ConversationDiarization:
             time.sleep(.5)
         conversation_transcriber.stop_transcribing_async()
 
-        if transcribing_stop:y
+        if transcribing_stop:
             return diarize_text
 
 
@@ -95,7 +95,7 @@ class ConversationDiarization:
 
 # try:
 #     diarize = ConversationDiarization(
-#         audio_file="C:/Users/047929/AppData/Local/Temp/tmp_oy133on.wav", language="en-US")
+#         audio_file="C:/Users/047929/AppData/Local/Temp/tmplv2neogb.wav", language="en-US")
 #     diarize.recognize_from_file()
 # except Exception as err:
 #     print("Encountered exception. {}".format(err))

@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder, speech_to_text
 import pandas as pd
@@ -5,14 +6,10 @@ import altair as alt
 from sentiment_analysis import analyze_sentiment
 from conversation_diarization import ConversationDiarization
 from tempfile import NamedTemporaryFile
-import os
-import ntpath
-from pathlib import Path, PureWindowsPath
 
 
 st.set_page_config(layout='wide')
 state = st.session_state
-
 
 if "messages" not in state:
     state.messages = []
@@ -31,6 +28,10 @@ if 'text_received' not in state:
 
 if 'recording' not in state:
     state.recording = False
+
+if "temp_file_location" not in state:
+    state.temp_file_location = dict()
+
 
 # Display chat messages from history on app rerun
 for message in state.messages:
@@ -54,15 +55,9 @@ audio = st.sidebar.file_uploader("Upload an audio file", type=[
                                  "mp3", "wav"], on_change=None)
 
 if audio is not None and audio.name not in state.uploaded_files:
-
-    with NamedTemporaryFile(suffix=".wav", delete=False) as temp:
-        temp.write(audio.read())
-        # tfName = temp.name
-        temp.seek(0)
-
-    file_name = temp.name
+    file_name = audio.name
     state.uploaded_files.add(file_name)
-    state.audio_mapping[file_name] = temp
+    state.audio_mapping[file_name] = audio
 
 file_selected = st.sidebar.selectbox(
     "Which Audio File you want to process?", state.uploaded_files)
@@ -71,7 +66,7 @@ if file_selected:
     audio_file = state.audio_mapping.get(file_selected)
     if audio_file:
         try:
-            st.sidebar.audio(audio_file.read(), format="audio/wav")
+            st.sidebar.audio(audio_file.getvalue(), format="audio/wav")
         except Exception as e:
             st.sidebar.error(f"Error playing audio: {e}")
 
@@ -141,34 +136,34 @@ elif perform_audio_diarization:
     if file_selected:
         audio_file = state.audio_mapping.get(file_selected)
         if audio_file:
-            progress_bar = st.sidebar.empty()
-            progres_text = st.sidebar.empty()
 
-            progress_bar.progress(0)
-            progres_text.text("Processing.....")
+            with NamedTemporaryFile(suffix=".wav", delete=False) as temp:
+                temp.write(audio_file.getvalue())
+                temp.seek(0)
+                temp.flush()
+                state.temp_file_location[audio.name] = temp.name
 
-            # temp_file = audio_file.name.replace(os.sep, ntpath.sep)
-            windows_path = Path(audio_file.name).as_posix()
-            windows_path.replace("/", "\\")
+                progress_bar = st.sidebar.empty()
+                progres_text = st.sidebar.empty()
+                progress_bar.progress(0)
+                progres_text.text("Processing.....")
 
-            # TODO: phrase list
-            diarize = ConversationDiarization(
-                audio_file=windows_path, language=lang_options[selected_lang])
-            
-            text = diarize.recognize_from_file()
-            st.markdown(text)
-            print('Diarize text: ', text)
-
-            progress_bar.progress(100)
-            progres_text.text("Processing Complete.....")
-
+                # TODO: phrase list
+                diarize = ConversationDiarization(
+                    audio_file=state.temp_file_location.get(audio_file.name), language=lang_options[selected_lang])
+                text = diarize.recognize_from_file()
+                st.text(text)
+                print('Diarize text: ', text)
+                progress_bar.progress(100)
+                progres_text.text("Processing Complete.....")
+                # delete temp file
+                temp.close()
+                os.unlink(temp.name)
         else:
             st.error("Error: No audio file found")
 
-
 else:
     if state.uploaded_files:
-        print("xxxxxxxxxxxxxxxxxxxxx")
         if prompt := st.chat_input("What is up?"):
             state.messages.append({"role": "user", "content": prompt})
         # Display user message in chat message container
