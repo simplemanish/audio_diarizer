@@ -106,13 +106,13 @@ class ConversationDiarization:
             for segment in self.segments:
                 if last_speaker_id is None:
                     # For the first segment, start with "Guest-X:"
-                    diarize_text += f"{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']} ): {segment['text']}"
+                    diarize_text += f"{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']}): {segment['text']}"
                 elif segment['speaker_id'] == last_speaker_id:
                     # If the current speaker is the same as the last one, append the text
                     diarize_text += " " + segment['text']
                 else:
                     # If the speaker changes, add a new entry with "Guest-X:"
-                    diarize_text += f"\n{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']} ): {segment['text']}"
+                    diarize_text += f"\n{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']}): {segment['text']}"
 
                 last_speaker_id = segment['speaker_id']
 
