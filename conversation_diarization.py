@@ -31,16 +31,15 @@ class ConversationDiarization:
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
             if evt.result.speaker_id and evt.result.speaker_id != "Unknown":
                 # calculate start end time, convert into second.
-                start_time = evt.result._offset/10000000
-                end_time = (evt.result._offset + evt.result.duration)/10000000
+                start_time = getFormattedTime(evt.result._offset/10000000)
+                end_time = getFormattedTime(
+                    (evt.result._offset + evt.result.duration)/10000000)
                 self.segments.append({
                     'speaker_id': evt.result.speaker_id,
                     'text': evt.result.text,
                     'start_time': start_time,
                     'end_time': end_time
                 })
-            print('\tText={}'.format(evt.result.text))
-            print('\tSpeaker ID={}'.format(evt.result.speaker_id))
         elif evt.result.reason == speechsdk.ResultReason.NoMatch:
             print('\tNOMATCH: Speech could not be TRANSCRIBED: {}'.format(
                 evt.result.no_match_details))
@@ -72,9 +71,11 @@ class ConversationDiarization:
         transcribing_stop = False
 
         def stop_cb(evt: speechsdk.SessionEventArgs):
-            # """callback that signals to stop continuous recognition upon
-            # receiving an event `evt`"""
-            # print('CLOSING on {}'.format(evt))
+            """
+            callback that signals to stop continuous recognition upon
+            receiving an event `evt`
+            """
+
             nonlocal transcribing_stop
             transcribing_stop = True
 
@@ -102,18 +103,29 @@ class ConversationDiarization:
         if transcribing_stop:
             diarize_text = ""
             last_speaker_id = None
-
+            speaker_list = []
             for segment in self.segments:
                 if last_speaker_id is None:
                     # For the first segment, start with "Guest-X:"
-                    diarize_text += f"{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']}): {segment['text']}"
+                    speaker_list.append([segment['speaker_id'], segment['start_time'], segment['end_time'], segment['text']])
                 elif segment['speaker_id'] == last_speaker_id:
-                    # If the current speaker is the same as the last one, append the text
-                    diarize_text += " " + segment['text']
+                    s_list = speaker_list[-1]
+                    s_list[2] = segment['end_time']
+                    s_list[3]+=segment['text']
+                    speaker_list[-1] = s_list
                 else:
                     # If the speaker changes, add a new entry with "Guest-X:"
-                    diarize_text += f"\n{segment['speaker_id']} ({segment['start_time']}-{segment['end_time']}): {segment['text']}"
-
+                    if segment['text']:
+                        speaker_list.append([segment['speaker_id'], segment['start_time'], segment['end_time'], segment['text']])
                 last_speaker_id = segment['speaker_id']
-
+            for talk in speaker_list:
+                diarize_text+= f"{talk[0]} ({talk[1]}-{talk[2]}): {talk[3]}\n"
             return diarize_text
+
+
+def getFormattedTime(seconds=0):
+    s_min, s_sec = divmod(seconds, 60)
+    # s_hr, s_min = divmod(s_min, 60)
+    return "%0d:%02d" % (s_min, s_sec)
+
+
