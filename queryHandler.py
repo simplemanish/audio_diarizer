@@ -16,9 +16,9 @@ load_dotenv()
 
 class UserQueryHandler():
     deployment = os.getenv("EMBEDDINGS_DEPLOTMENT_NAME")
-    deployment_model = os.getenv("EMBEDDINGS_DEPLOTMENT_MODEL")
+    deployment_model = os.getenv("EMBEDDINGS_DEPLOYMENT_MODEL")
     
-    gpt_deployment_name = os.getenv("AZURE_DEPLOTMENT_NAME")
+    gpt_deployment_name = os.getenv("AZURE_DEPLOYMENT_NAME")
     api_version=os.getenv("AZURE_OPENAI_API_VERSION")
     azure_endpoint= os.getenv("OPENAI_ENDPOINT")
 

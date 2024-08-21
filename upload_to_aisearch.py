@@ -9,7 +9,7 @@ import re
 import os
 from dotenv import load_dotenv
 load_dotenv()
-azure_deployment = os.getenv("EMBEDDINGS_DEPLOTMENT_NAME")
+azure_deployment = os.getenv("EMBEDDINGS_DEPLOYMENT_NAME")
 api_version =os.getenv("AZURE_OPENAI_API_VERSION")
 azure_endpoint =os.getenv("OPENAI_ENDPOINT")
 openai_api_type =os.getenv("OPENAI_API_TYPE")
