@@ -1,4 +1,5 @@
 import os
+import time
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder, speech_to_text
 import pandas as pd
@@ -6,6 +7,7 @@ import altair as alt
 from sentiment_analysis import analyze_sentiment
 from conversation_diarization import ConversationDiarization
 from tempfile import NamedTemporaryFile
+import upload_to_aisearch
 
 
 st.set_page_config(layout='wide')
@@ -32,6 +34,20 @@ if 'recording' not in state:
 if "temp_file_location" not in state:
     state.temp_file_location = dict()
 
+if "text" not in state:
+    state.text = ""
+
+st.markdown(
+    """
+    <style>
+    .stMarkdown p {
+        text-indent: -9em;
+        padding-left: 9em;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Display chat messages from history on app rerun
 for message in state.messages:
@@ -70,67 +86,67 @@ if file_selected:
         except Exception as e:
             st.sidebar.error(f"Error playing audio: {e}")
 
-phrase_info = "Enter a phrase related to the audio or your analysis. seperated by semicolon (;)"
-phrase_input = st.sidebar.text_input(
-    "Phrase",
-    placeholder="Enter phrase",
-    help=phrase_info
-)
+# phrase_info = "Enter a phrase related to the audio or your analysis. seperated by semicolon (;)"
+# phrase_input = st.sidebar.text_input(
+#     "Phrase",
+#     placeholder="Enter phrase",
+#     help=phrase_info
+# )
 
 perform_audio_diarization = st.sidebar.checkbox(
     'Perform Audio Diarization', key='perform_audio_diarization', on_change=None)
-perform_sentiment_analysis = st.sidebar.checkbox(
-    'Perform Sentiment Analysis', key='perform_sentiment_analysis', on_change=None)
+# perform_sentiment_analysis = st.sidebar.checkbox(
+#     'Perform Sentiment Analysis', key='perform_sentiment_analysis', on_change=None)
 
-if perform_sentiment_analysis:
-    st.markdown("Sentiment Analysis")
+# if perform_sentiment_analysis:
+#     st.markdown("Sentiment Analysis")
 
-    if file_selected:
-        audio_file = state.audio_mapping.get(file_selected)
-        if audio_file:
-            progress_bar = st.sidebar.empty()
-            progres_text = st.sidebar.empty()
+#     if file_selected:
+#         audio_file = state.audio_mapping.get(file_selected)
+#         if audio_file:
+#             progress_bar = st.sidebar.empty()
+#             progres_text = st.sidebar.empty()
 
-            progress_bar.progress(0)
-            progres_text.text("Processing.....")
+#             progress_bar.progress(0)
+#             progres_text.text("Processing.....")
 
-            transcription, sentiment_scores = analyze_sentiment(audio_file)
+#             transcription, sentiment_scores = analyze_sentiment(audio_file)
 
-            print('Transcribed text: ', transcription)
+#             print('Transcribed text: ', transcription)
 
-            progress_bar.progress(100)
-            progres_text.text("Processing Complete.....")
+#             progress_bar.progress(100)
+#             progres_text.text("Processing Complete.....")
 
-            sentiment_labels = ["Positive", "Neutral", "Negative"]
-            sentiment_values = [
-                sentiment_scores['pos'],
-                sentiment_scores['neu'],
-                sentiment_scores['neg']
-            ]
+#             sentiment_labels = ["Positive", "Neutral", "Negative"]
+#             sentiment_values = [
+#                 sentiment_scores['pos'],
+#                 sentiment_scores['neu'],
+#                 sentiment_scores['neg']
+#             ]
 
-            sentiment_data = pd.DataFrame({
-                "Sentiment": sentiment_labels,
-                "Score": sentiment_values
-            })
+#             sentiment_data = pd.DataFrame({
+#                 "Sentiment": sentiment_labels,
+#                 "Score": sentiment_values
+#             })
 
-            sentiment_data["Color"] = sentiment_data["Score"].apply(
-                lambda x: "#4CAF50" if x > 0.5 else "#FFC107" if x > 0 else "#F44336"
-            )
+#             sentiment_data["Color"] = sentiment_data["Score"].apply(
+#                 lambda x: "#4CAF50" if x > 0.5 else "#FFC107" if x > 0 else "#F44336"
+#             )
 
-            chart = alt.Chart(sentiment_data).mark_bar().encode(
-                x="Sentiment:O",
-                y="Score:Q",
-                color=alt.Color("Color:N", scale=None),
-                tooltip=["Sentiment:N", "Score:Q"]
-            ).properties(
-                title="Sentiment Analysis Scores"
-            )
+#             chart = alt.Chart(sentiment_data).mark_bar().encode(
+#                 x="Sentiment:O",
+#                 y="Score:Q",
+#                 color=alt.Color("Color:N", scale=None),
+#                 tooltip=["Sentiment:N", "Score:Q"]
+#             ).properties(
+#                 title="Sentiment Analysis Scores"
+#             )
 
-            st.altair_chart(chart, use_container_width=True)
-        else:
-            st.error("Error: No audio file found")
+#             st.altair_chart(chart, use_container_width=True)
+#         else:
+#             st.error("Error: No audio file found")
 
-elif perform_audio_diarization:
+if perform_audio_diarization:
     st.markdown("Audio Diarization")
     if file_selected:
         audio_file = state.audio_mapping.get(file_selected)
@@ -148,12 +164,27 @@ elif perform_audio_diarization:
                 progres_text.text("Processing.....")
 
                 # phrase list
-                phrase_list = phrase_input.split(";")
+                # phrase_list = phrase_input.split(";")
                 diarize = ConversationDiarization(
-                    audio_file=state.temp_file_location.get(audio_file.name), language=lang_options[selected_lang], phrase_list=phrase_list)
-                text = diarize.recognize_from_file()
-                st.text(text)
-                print('Diarize text: ', text)
+                    audio_file=state.temp_file_location.get(audio_file.name), language=lang_options[selected_lang])
+                state.text = diarize.recognize_from_file()
+                formatted_text=""
+                for line in state.text.splitlines():
+                    if line:
+                        speaker, dialogue = line.split(":", 1)
+                        formatted_text += f"{speaker.strip()} : {dialogue.strip()}\n\n"
+               
+                for percent_complete in range(1, 101):
+                    time.sleep(0.1)
+                    progress_bar.progress(percent_complete)
+                    progres_text.text(f"Processing...{percent_complete}")
+               
+                st.markdown(formatted_text, unsafe_allow_html=True)
+                print('FORMATTED TEXT: \n', formatted_text)
+
+                upload_to_aisearch.get_text_chunks(state.text,file_selected)
+                # st.text(state.text)
+                print('Diarize text: ', state.text)
                 progress_bar.progress(100)
                 progres_text.text("Processing Complete.....")
                 # delete temp file
@@ -165,24 +196,17 @@ elif perform_audio_diarization:
 else:
     if state.uploaded_files:
         if prompt := st.chat_input("What is up?"):
-            state.messages.append({"role": "user", "content": prompt})
+            import queryHandler
+            queryHandler.handle_userinput(prompt)
         # Display user message in chat message container
-            with st.chat_message("user"):
-                st.markdown(prompt)
 
-            with st.chat_message("assistant"):
-                if is_audio and file_selected:
-                    response = st.write_stream(get_response(
-                        file_selected, prompt, state.mapping, True))
-                    state.messages.append(
-                        {"role": "assistant", "content": response})
+            for i, message in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:
+                    with st.chat_message("user"):
+                        st.write(message)
                 else:
-                    response = st.write_stream(get_response(
-                        file_selected, prompt, state.mapping, False))
-                    state.messages.append(
-                        {"role": "assistant", "content": response})
-
-                st.download_button('Download Text', response)
+                    with st.chat_message("assistant"):
+                        st.write(message)
     else:
         st.chat_input(disabled=True)
 

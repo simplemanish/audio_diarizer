@@ -40,6 +40,8 @@ class ConversationDiarization:
                     'start_time': start_time,
                     'end_time': end_time
                 })
+            print('\tText={}'.format(evt.result.text))
+            print('\tSpeaker ID={}'.format(evt.result.speaker_id))
         elif evt.result.reason == speechsdk.ResultReason.NoMatch:
             print('\tNOMATCH: Speech could not be TRANSCRIBED: {}'.format(
                 evt.result.no_match_details))
@@ -101,6 +103,7 @@ class ConversationDiarization:
         conversation_transcriber.stop_transcribing_async()
 
         if transcribing_stop:
+            global diarize_text
             diarize_text = ""
             last_speaker_id = None
             speaker_list = []
@@ -127,5 +130,3 @@ def getFormattedTime(seconds=0):
     s_min, s_sec = divmod(seconds, 60)
     # s_hr, s_min = divmod(s_min, 60)
     return "%0d:%02d" % (s_min, s_sec)
-
-
