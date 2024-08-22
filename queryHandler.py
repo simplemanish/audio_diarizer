@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class UserQueryHandler():
-    deployment = os.getenv("EMBEDDINGS_DEPLOTMENT_NAME")
+    deployment = os.getenv("EMBEDDINGS_DEPLOYMENT_NAME")
     deployment_model = os.getenv("EMBEDDINGS_DEPLOYMENT_MODEL")
     
     gpt_deployment_name = os.getenv("AZURE_DEPLOYMENT_NAME")
@@ -106,6 +106,7 @@ class UserQueryHandler():
 
 
 def handle_userinput(question):
+
     index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 
     if "conversation" not in st.session_state:
@@ -141,5 +142,5 @@ def handle_userinput(question):
     else:
         st.error("Missing valid index_name.")
         print("Missing valid index_name.")
-    
+
     return st.session_state.chat_history
