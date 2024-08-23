@@ -54,12 +54,80 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+def display_message(role, content):
+    if role == "user":
+        alignment = "right"
+ 
+        background_color = "#008080" # deep teal
+        border_radius = "20px 20px 0 20px"
+        # logo_url = "https://example.com/user-logo.png"  # Replace with user logo URL
+        logo_position = "right: 10px;"
+        flex_direction = "row-reverse"
+    else:
+        alignment = "left"
+        background_color = "#8B5C57" # warm taupe with deep teal
+        border_radius = "20px 20px 20px 0"
+        # logo_url = "https://example.com/bot-logo.png"  # Replace with bot logo URL
+        logo_position = "left: 10px;"
+        flex_direction = "row"
+ 
+    # Hide default Streamlit chat icons using CSS
+    hide_icons_css = """
+    <style>
+        div[data-testid="chatAvatarIcon-assistant"] {
+            display: none; /* Hide default Streamlit chat icons */
+        }
+        div[data-testid="chatAvatarIcon-user"] {
+            display: none; /* Hide default Streamlit chat icons */
+        }
+        div[data-testid="stChatMessage"] {
+            background-color: transparent !important; /* Hide default Streamlit chat icons */
+        }
+        
+        
+    </style>
+    """
+   
+    message_html = f'''
+    <div style="
+        display: flex;
+        flex-direction: {flex_direction};
+        align-items: flex-start;
+        justify-content: {alignment};
+        margin-bottom: 10px;
+    ">
+    <div style="
+        text-align: {alignment};
+        background-color: {background_color};
+        padding: 10px;
+        border-radius: {border_radius};
+        max-width: 80%;
+        display: inline-block;
+        word-wrap: break-word;
+        position: relative;
+    ">
+        {content}
+        </div>
+    </div>
+    '''
+ 
+    # Display the message with the custom HTML
+    st.markdown(hide_icons_css + message_html, unsafe_allow_html=True)
+
+    
+    
+    
 # Display chat messages from history on app rerun
 for message in state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-st.markdown("# Audio Bot")
-st.sidebar.header("Audio Diarization")
+        if message["role"] == "user":
+            display_message(message['role'], message["content"])
+        elif message["role" == "assistant"]:
+            display_message(message['role'], message["content"])
+        else:
+            st.markdown(f'<div class="bot-message">{message["content"]}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 lang_options = {
     "English (India)": "en-IN",
@@ -152,6 +220,7 @@ perform_audio_diarization = st.sidebar.checkbox(
 #             st.error("Error: No audio file found")
 
 if perform_audio_diarization:
+    st.session_state.chat_history = []
     st.markdown("Audio Diarization")
     if file_selected:
         audio_file = state.audio_mapping.get(file_selected)
@@ -207,10 +276,12 @@ else:
             for i, message in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
                     with st.chat_message("user"):
-                        st.write(message)
+                        # st.write(message)
+                        display_message("user", message)
                 else:
                     with st.chat_message("assistant"):
-                        st.write(message)
+                        # st.write(message)
+                        display_message("assistant", message)
     else:
         st.chat_input(disabled=True)
 
