@@ -74,7 +74,7 @@ class UserQueryHandler():
         if memory and llm:
             conversation_chain = ConversationalRetrievalChain.from_llm(
                 llm=llm,
-                retriever=vectorstore.as_retriever(search_type="similarity_score_threshold", k=3,search_kwargs={"score_threshold": 0.8}),
+                retriever=vectorstore.as_retriever(search_type="similarity_score_threshold", k=3,search_kwargs={"score_threshold": 0.4}),
                 chain_type="stuff",
                 memory=memory,
                 max_tokens_limit=4000,
@@ -105,9 +105,8 @@ class UserQueryHandler():
     #     return memory
 
 
-def handle_userinput(question):
+def handle_userinput(question,index_name):
 
-    index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
