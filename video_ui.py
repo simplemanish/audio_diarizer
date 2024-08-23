@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder, speech_to_text
+import time
 import pandas as pd
 import altair as alt
 from sentiment_analysis import analyze_sentiment
@@ -22,8 +23,8 @@ if "messages" not in state:
 if "mapping" not in state:
     state.mapping = dict()
 
-if "uploaded_files" not in state:
-    state.uploaded_files = ["Choose video"]
+if "uploaded_video_files" not in state:
+    state.uploaded_video_files = ["Choose video"]
 
 if "audio_mapping" not in state:
     state.audio_mapping = dict()
@@ -37,10 +38,89 @@ if 'recording' not in state:
 if 'count' not in state:
     state.count = 1
 
+st.markdown(
+    """
+    <style>
+    .stMarkdown p {
+        text-indent: -9em;
+        padding-left: 9em;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+def display_message(role, content):
+    if role == "user":
+        alignment = "right"
+ 
+        background_color = "#008080" # deep teal
+        border_radius = "20px 20px 0 20px"
+        # logo_url = "https://example.com/user-logo.png"  # Replace with user logo URL
+        logo_position = "right: 10px;"
+        flex_direction = "row-reverse"
+    else:
+        alignment = "left"
+        background_color = "#8B5C57" # warm taupe with deep teal
+        border_radius = "20px 20px 20px 0"
+        # logo_url = "https://example.com/bot-logo.png"  # Replace with bot logo URL
+        logo_position = "left: 10px;"
+        flex_direction = "row"
+ 
+    # Hide default Streamlit chat icons using CSS
+    hide_icons_css = """
+    <style>
+        div[data-testid="chatAvatarIcon-assistant"] {
+            display: none; /* Hide default Streamlit chat icons */
+        }
+        div[data-testid="chatAvatarIcon-user"] {
+            display: none; /* Hide default Streamlit chat icons */
+        }
+        div[data-testid="stChatMessage"] {
+            background-color: transparent !important; /* Hide default Streamlit chat icons */
+        }
+        
+        
+    </style>
+    """
+   
+    message_html = f'''
+    <div style="
+        display: flex;
+        flex-direction: {flex_direction};
+        align-items: flex-start;
+        justify-content: {alignment};
+        margin-bottom: 10px;
+    ">
+    <div style="
+        text-align: {alignment};
+        background-color: {background_color};
+        padding: 10px;
+        border-radius: {border_radius};
+        max-width: 80%;
+        display: inline-block;
+        word-wrap: break-word;
+        position: relative;
+    ">
+        {content}
+        </div>
+    </div>
+    '''
+ 
+    # Display the message with the custom HTML
+    st.markdown(hide_icons_css + message_html, unsafe_allow_html=True)
+
 # Display chat messages from history on app rerun
 for message in state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message["role"] == "user":
+            display_message(message['role'], message["content"])
+        elif message["role" == "assistant"]:
+            display_message(message['role'], message["content"])
+        else:
+            st.markdown(f'<div class="bot-message">{message["content"]}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("# Video Bot")
 st.sidebar.header("Video Diarization")
 
@@ -58,19 +138,19 @@ st.sidebar.header("Video Diarization")
 # audio = st.sidebar.file_uploader("Upload a video file", type=[
 #                                  "mp4", "mpeg4"], on_change=None)
 
-# if audio is not None and audio.name not in state.uploaded_files:
+# if audio is not None and audio.name not in state.uploaded_video_files:
 #     file_name = audio.name
-#     state.uploaded_files.add(file_name)
+#     state.uploaded_video_files.add(file_name)
 #     state.audio_mapping[file_name] = audio
 vi = VideoIndexer()
 video_list = vi.get_video_list()
 # count = 1 
 if state.count == 1:
     for i in video_list:
-        state.uploaded_files.append(i["video_name"])
+        state.uploaded_video_files.append(i["video_name"])
     state.count += 1
 file_selected = st.sidebar.selectbox(
-    "Which Audio File you want to process?", state.uploaded_files)
+    "Which Audio File you want to process?", state.uploaded_video_files)
 if file_selected:
     for item in video_list:
         if item["video_name"] == file_selected:
@@ -87,8 +167,8 @@ if file_selected:
 #     help=phrase_info
 # )
 
-is_audio = st.sidebar.checkbox(
-    'Perform Audio Analysis', key='is_audio', on_change=None)
+is_video = st.sidebar.checkbox(
+    'Perform Video Analysis', key='is_video', on_change=None)
 # perform_sentiment_analysis = st.sidebar.checkbox(
 #     'Perform Sentiment Analysis', key='perform_sentiment_analysis', on_change=None)
 
@@ -141,7 +221,8 @@ is_audio = st.sidebar.checkbox(
 #             st.error("Error: No audio file found")
 
 
-if is_audio:
+if is_video:
+    st.session_state.chat_history = []
     st.markdown("Video Diarization")
     if file_selected == "Choose video":
         st.sidebar.error("Please select the file")
@@ -153,29 +234,45 @@ if is_audio:
                 # if item["video_state"] == "Processed":
                 #     st.sidebar.success(f'{item["video_name"]} is Proccesed')
                 print("video_id :",video_id)
-                diarize = vi.get_indexed_video_data(video_id=video_id)
+                state.text = vi.get_indexed_video_data(video_id=video_id)
                 
-                upload_to_aisearch.get_text_chunks(diarize,file_selected,index_name)
-                st.text(diarize)
+                upload_to_aisearch.get_text_chunks(state.text,file_selected,index_name)
+                # st.text(diarize)
+                formatted_text=""
+                for line in state.text.splitlines():
+                    if line:
+                        speaker, dialogue = line.split(":", 1)
+                        formatted_text += f"{speaker.strip()} : {dialogue.strip()}\n\n"
+                
+                progress_bar = st.sidebar.empty()
+                progres_text = st.sidebar.empty()
+                for percent_complete in range(1, 101):
+                    time.sleep(0.1)
+                    progress_bar.progress(percent_complete)
+                    progres_text.text(f"Processing...{percent_complete}")
+               
+                st.markdown(formatted_text, unsafe_allow_html=True)
 
 else:
-    if state.uploaded_files:
+    if state.uploaded_video_files:
         if prompt := st.chat_input("What is up?"):
             queryHandler.handle_userinput(prompt,index_name)
             for i, message in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
                     with st.chat_message("user"):
-                        st.write(message)
+                        # st.write(message)
+                        display_message("user", message)
                 else:
                     with st.chat_message("assistant"):
-                        st.write(message)
+                        # st.write(message)
+                        display_message("assistant", message)
         #     state.messages.append({"role": "user", "content": prompt})
         # # Display user message in chat message container
         #     with st.chat_message("user"):
         #         st.markdown(prompt)
 
         #     with st.chat_message("assistant"):
-        #         if is_audio and file_selected:
+        #         if is_video and file_selected:
         #             response = st.write_stream(get_response(
         #                 file_selected, prompt, state.mapping, True))
         #             state.messages.append(
@@ -190,16 +287,16 @@ else:
     else:
         st.chat_input(disabled=True)
 
-    cols_2 = st.columns(16)
-    with cols_2[15]:
-        for i in range(22):
-            st.write("")
-        if st.button("🎙️" if not state.recording else "🛑"):
-            if state.recording:
-                state.recording = False
-                audio_data = mic_recorder()
-                transcribed_text = speech_to_text(audio_data)
-                st.chat_input(transcribed_text)
-            else:
-                state = True
-                mic_recorder()
+    # cols_2 = st.columns(16)
+    # with cols_2[15]:
+    #     for i in range(22):
+    #         st.write("")
+    #     if st.button("🎙️" if not state.recording else "🛑"):
+    #         if state.recording:
+    #             state.recording = False
+    #             audio_data = mic_recorder()
+    #             transcribed_text = speech_to_text(audio_data)
+    #             st.chat_input(transcribed_text)
+    #         else:
+    #             state = True
+    #             mic_recorder()
