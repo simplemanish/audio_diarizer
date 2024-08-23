@@ -128,7 +128,7 @@ for message in state.messages:
         else:
             st.markdown(f'<div class="bot-message">{message["content"]}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
+st.markdown("# Audio Bot 🔊")
 lang_options = {
     "English (India)": "en-IN",
     "English (US)": "en-US",
@@ -285,16 +285,16 @@ else:
     else:
         st.chat_input(disabled=True)
 
-    cols_2 = st.columns(16)
-    with cols_2[15]:
-        for i in range(22):
-            st.write("")
-        if st.button("🎙️" if not state.recording else "🛑"):
-            if state.recording:
-                state.recording = False
-                audio_data = mic_recorder()
-                transcribed_text = speech_to_text(audio_data)
-                st.chat_input(transcribed_text)
-            else:
-                state = True
-                mic_recorder()
+    # cols_2 = st.columns(16)
+    # with cols_2[15]:
+    #     for i in range(22):
+    #         st.write("")
+    #     if st.button("🎙️" if not state.recording else "🛑"):
+    #         if state.recording:
+    #             state.recording = False
+    #             audio_data = mic_recorder()
+    #             transcribed_text = speech_to_text(audio_data)
+    #             st.chat_input(transcribed_text)
+    #         else:
+    #             state = True
+    #             mic_recorder()
