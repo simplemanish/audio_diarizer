@@ -121,7 +121,7 @@ for message in state.messages:
         else:
             st.markdown(f'<div class="bot-message">{message["content"]}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-st.markdown("# Video Bot")
+st.markdown("# Video Bot 🎥")
 st.sidebar.header("Video Diarization")
 
 # lang_options = {
