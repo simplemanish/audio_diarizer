@@ -16,9 +16,18 @@ openai_api_type =os.getenv("OPENAI_API_TYPE")
 api_key =os.getenv("OPENAI_API_KEY")
 azure_search_endpoint =os.getenv("AZURE_SEARCH_ENDPOINT")
 azure_search_key =os.getenv("AZURE_SEARCH_API_KEY")
-index_name =os.getenv("AZURE_SEARCH_INDEX_NAME")
 
-def get_text_chunks(text,filename):
+def delete_index(filename,index_name):
+    print(f"Checking if records of file {filename} already exists in index {index_name}")
+    search_creds = AzureKeyCredential(azure_search_key)
+    search_client = SearchIndexClient(endpoint=azure_search_endpoint, credential=search_creds)
+    try:
+        search_client.delete_index(index_name)
+    except Exception as e:
+        print("error occured while deleteing index.",e)
+
+def get_text_chunks(text,filename,index_name):
+    delete_index(filename,index_name)
     try:
         text_splitter = CharacterTextSplitter(     
             separator = "\n",     
@@ -32,7 +41,7 @@ def get_text_chunks(text,filename):
             if text_list:
                 doc = [Document(page_content=chunk, metadata = {"file_name":filename})for chunk in text_list]
                 print("Successfully created vector document.")
-                get_vector_store(doc)
+                get_vector_store(doc,index_name)
                 return doc
             else:
                 print("Failed to create vector document.")
@@ -41,7 +50,7 @@ def get_text_chunks(text,filename):
     except Exception:
         print("Failed to fetch the text chunks")
 
-def get_vector_store(chunk_data):
+def get_vector_store(chunk_data,index_name):
     try:
         embeddings: AzureOpenAIEmbeddings = AzureOpenAIEmbeddings(
             azure_deployment = azure_deployment,

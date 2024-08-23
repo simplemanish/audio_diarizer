@@ -8,6 +8,9 @@ from sentiment_analysis import analyze_sentiment
 from conversation_diarization import ConversationDiarization
 from tempfile import NamedTemporaryFile
 import upload_to_aisearch
+import queryHandler
+from dotenv import load_dotenv
+load_dotenv()
 
 
 st.set_page_config(layout='wide')
@@ -36,6 +39,8 @@ if "temp_file_location" not in state:
 
 if "text" not in state:
     state.text = ""
+
+index_name = os.getenv("AZURE_SEARCH_AUDIO_INDEX_NAME")
 
 st.markdown(
     """
@@ -181,8 +186,7 @@ if perform_audio_diarization:
                
                 st.markdown(formatted_text, unsafe_allow_html=True)
                 print('FORMATTED TEXT: \n', formatted_text)
-
-                upload_to_aisearch.get_text_chunks(state.text,file_selected)
+                upload_to_aisearch.get_text_chunks(state.text,file_selected,index_name)
                 # st.text(state.text)
                 print('Diarize text: ', state.text)
                 progress_bar.progress(100)
@@ -196,8 +200,8 @@ if perform_audio_diarization:
 else:
     if state.uploaded_files:
         if prompt := st.chat_input("What is up?"):
-            import queryHandler
-            queryHandler.handle_userinput(prompt)
+            
+            queryHandler.handle_userinput(prompt,index_name)
         # Display user message in chat message container
 
             for i, message in enumerate(st.session_state.chat_history):
